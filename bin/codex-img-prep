@@ -1,0 +1,148 @@
+#!/bin/bash
+# codex-img-prep - resize/compress images for Codex (CC Switch → MiniMax)
+#
+# MiniMax API rejects images > 10MB with HTTP 400 / code 2013
+# (mis-reported by CC Switch as "context window exceeds limit").
+# This script shrinks any image to a Codex-safe size.
+#
+# Usage:
+#   codex-img-prep file.png            # resize in-place, overwriting if smaller
+#   codex-img-prep --out dir/ file.png # write to dir
+#   codex-img-prep --clip              # process image currently on clipboard
+#   codex-img-prep --watch ~/Desktop   # watch folder, auto-resize new screenshots
+#
+# Safe target: max 1920x1920 px, JPEG q=85, target ≤ 4MB.
+
+set -euo pipefail
+
+MAX_DIM=1920
+JPEG_QUALITY=85
+TARGET_BYTES=4194304   # 4MB - safe margin under MiniMax's 10MB hard limit
+SAFE_BYTES=8388608     # 8MB - hard ceiling; abort if can't get under this
+
+usage() {
+    sed -n '2,16p' "$0"
+    exit 1
+}
+
+size_of() {
+    stat -f%z "$1" 2>/dev/null || echo 0
+}
+
+# Resize one file. Args: <input> [<output>]
+resize_one() {
+    local src="$1"
+    local dst="${2:-$1}"
+    [[ -f "$src" ]] || { echo "✗ not found: $src" >&2; return 1; }
+
+    local before
+    before=$(size_of "$src")
+
+    # JPEG output is much smaller; PNG only if image has alpha or user keeps .png
+    local ext="${dst##*.}"
+    ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+
+    local tmp; tmp=$(mktemp -t codex-prep).jpg
+
+    sips -s format jpeg -s formatOptions "$JPEG_QUALITY" \
+         -Z "$MAX_DIM" "$src" --out "$tmp" >/dev/null 2>&1 || {
+        rm -f "$tmp"
+        echo "✗ sips failed: $src" >&2; return 1;
+    }
+
+    local after
+    after=$(size_of "$tmp")
+    if (( after > SAFE_BYTES )); then
+        # Try harder: drop quality to 70
+        sips -s format jpeg -s formatOptions 70 \
+             -Z "$MAX_DIM" "$src" --out "$tmp" >/dev/null 2>&1
+        after=$(size_of "$tmp")
+    fi
+
+    if (( after > SAFE_BYTES )); then
+        rm -f "$tmp"
+        echo "✗ cannot compress under 8MB: $src (still ${after}B)" >&2
+        return 1
+    fi
+
+    # Replace original (or write to output dir)
+    if [[ "$dst" == *.png ]]; then
+        # user wanted PNG output - keep PNG
+        local tmp_png; tmp_png=$(mktemp -t codex-prep).png
+        sips -s format png -Z "$MAX_DIM" "$tmp" --out "$tmp_png" >/dev/null 2>&1
+        mv "$tmp_png" "$dst"
+    else
+        mv "$tmp" "$dst"
+    fi
+    rm -f "$tmp" 2>/dev/null || true
+
+    printf "✓ %s  %s → %s  (-%d%%)\n" \
+        "$(basename "$src")" \
+        "$(numfmt --to=iec "$before" 2>/dev/null || echo "${before}B")" \
+        "$(numfmt --to=iec "$after" 2>/dev/null || echo "${after}B")" \
+        "$(( (before - after) * 100 / (before > 0 ? before : 1) ))"
+}
+
+# Process clipboard image: save png → resize → put back on clipboard
+process_clipboard() {
+    local tmp_in; tmp_in=$(mktemp -t codex-clip).png
+    local tmp_out; tmp_out=$(mktemp -t codex-clip).jpg
+
+    if ! pngpaste "$tmp_in" 2>/dev/null; then
+        rm -f "$tmp_in" "$tmp_out"
+        echo "✗ no image on clipboard (install pngpaste: brew install pngpaste)" >&2
+        return 1
+    fi
+
+    sips -s format jpeg -s formatOptions "$JPEG_QUALITY" \
+         -Z "$MAX_DIM" "$tmp_in" --out "$tmp_out" >/dev/null 2>&1
+
+    if (( $(size_of "$tmp_out") > SAFE_BYTES )); then
+        sips -s format jpeg -s formatOptions 70 \
+             -Z "$MAX_DIM" "$tmp_in" --out "$tmp_out" >/dev/null 2>&1
+    fi
+
+    # Put resized image back on clipboard as PNG (Codex accepts PNG/JPEG both)
+    if command -v imgclip >/dev/null; then
+        imgclip "$tmp_out" < "$tmp_out" >/dev/null 2>&1 || true
+    fi
+
+    local before after
+    before=$(size_of "$tmp_in"); after=$(size_of "$tmp_out")
+    printf "✓ clipboard image  %s → %s  (-%d%%) - paste into Codex now\n" \
+        "$(numfmt --to=iec "$before" 2>/dev/null || echo "${before}B")" \
+        "$(numfmt --to=iec "$after" 2>/dev/null || echo "${after}B")" \
+        "$(( (before - after) * 100 / (before > 0 ? before : 1) ))"
+
+    # Also save a copy to ~/Downloads for Codex if user wants to drag it
+    local saved="$HOME/Downloads/codex-clip-$(date +%Y%m%d-%H%M%S).jpg"
+    cp "$tmp_out" "$saved"
+    echo "  saved copy: $saved"
+
+    rm -f "$tmp_in" "$tmp_out"
+}
+
+# Watch a folder for new files and auto-resize them
+watch_dir() {
+    local dir="${1:-$HOME/Desktop}"
+    echo "watching $dir for new images (Ctrl-C to stop)..."
+    fswatch -0 --event Created --event MovedTo --event Renamed \
+            --include='\.(png|jpg|jpeg|gif|webp|heic|heif|tiff|bmp)$' \
+            "$dir" 2>/dev/null | while read -d '' path; do
+        sleep 0.3  # wait for file to finish writing
+        resize_one "$path" 2>/dev/null || true
+    done
+}
+
+# ─── main ───
+case "${1:-}" in
+    --clip|-c)      shift; process_clipboard "$@";;
+    --watch|-w)     shift; watch_dir "${1:-$HOME/Desktop}";;
+    --out|-o)       shift; outdir="$1"; shift
+                    mkdir -p "$outdir"
+                    for f in "$@"; do
+                        resize_one "$f" "$outdir/$(basename "${f%.*}").jpg"
+                    done;;
+    -h|--help|"")   usage;;
+    *)              for f in "$@"; do resize_one "$f"; done;;
+esac

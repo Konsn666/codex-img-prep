@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.codex-clipprep</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/macstudiodisplay/bin/codex-clip-watch.sh</string>
+    </array>
+
+    <!-- Run every 2 seconds -->
+    <key>StartInterval</key>
+    <integer>2</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/codex-clip-watch.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/codex-clip-watch.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>
