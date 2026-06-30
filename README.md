@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://www.apple.com/macos/)
+[![CI](https://github.com/Konsn666/codex-img-prep/actions/workflows/ci.yml/badge.svg)](https://github.com/Konsn666/codex-img-prep/actions/workflows/ci.yml)
 
 **Auto-resize images for Codex CLI when routed through CC Switch → MiniMax (or any provider with a similar ~10 MB media cap).**
 
@@ -56,27 +57,38 @@ The MiniMax model correctly identified "orange" in a heavily-noised 4500×3000 i
 
 ## Install
 
-Requires macOS 13+ and `brew`. Tested on macOS 15.4 (Apple Silicon).
+### One-liner (recommended)
 
 ```bash
-# 1. Install dependencies
-brew install pngpaste fswatch
+curl -fsSL https://raw.githubusercontent.com/Konsn666/codex-img-prep/main/install-remote.sh | bash
+```
 
-# 2. Run installer
+That's it. The script:
+1. Clones the repo into a tmp dir
+2. Runs `install.sh` (installs brew deps, copies files, loads LaunchAgent, patches CC Switch SQLite)
+3. Cleans up the tmp dir
+4. Prints next-step hints
+
+Restart CC Switch after install for the SQLite change to take effect.
+
+### Manual (if you prefer to inspect the repo first)
+
+```bash
 git clone https://github.com/Konsn666/codex-img-prep.git
 cd codex-img-prep
 ./install.sh
 ```
 
 The installer:
-1. Copies `bin/` scripts to `~/bin/`
-2. Copies `launchd/com.user.codex-clipprep.plist` to `~/Library/LaunchAgents/`
-3. Copies `workflow/Compress for Codex.workflow/` to `~/Library/Services/`
-4. Loads the LaunchAgent with `launchctl load -w`
-5. Patches CC Switch SQLite (`meta.apiFormat = "openai_responses"`) with an automatic backup
-6. Adds shell aliases to `~/.zshrc`
+1. Installs `pngpaste` and `fswatch` via Homebrew if missing
+2. Copies `bin/` scripts to `~/bin/`
+3. Copies `launchd/com.user.codex-clipprep.plist` to `~/Library/LaunchAgents/` (with `$HOME` substitution)
+4. Copies `workflow/Compress for Codex.workflow/` to `~/Library/Services/` (with `$HOME` substitution)
+5. Loads the LaunchAgent with `launchctl load -w`
+6. Patches CC Switch SQLite (`meta.apiFormat = "openai_responses"`) with an automatic backup
+7. Adds shell aliases to `~/.zshrc`
 
-Restart CC Switch after install for the SQLite change to take effect.
+Idempotent — safe to re-run.
 
 ## Usage
 

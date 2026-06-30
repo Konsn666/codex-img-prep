@@ -38,8 +38,9 @@ mkdir -p "$HOME/Library/Services"
 rm -rf "$HOME/Library/Services/Compress for Codex.workflow"
 cp -R "$HERE/workflow/Compress for Codex.workflow" "$HOME/Library/Services/"
 # Substitute home in the workflow
-find "$HOME/Library/Services/Compress for Codex.workflow" -name '*.plist' -o -name '*.wflow' \
-  | xargs sed -i '' "s|/Users/macstudiodisplay|$HOME|g"
+find "$HOME/Library/Services/Compress for Codex.workflow" \
+    \( -name '*.plist' -o -name '*.wflow' \) -print0 \
+  | xargs -0 sed -i '' "s|/Users/macstudiodisplay|$HOME|g"
 /System/Library/CoreServices/pbs -update 2>/dev/null || true
 echo "✓ Quick Action installed (Finder → right-click → Compress for Codex)"
 

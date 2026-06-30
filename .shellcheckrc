@@ -1,0 +1,10 @@
+# shellcheck config for codex-img-prep
+# https://github.com/koalaman/shellcheck/blob/master/shellcheckrc.md
+
+# Allow $HOME references in install.sh (we substitute at install time)
+disable=SC1090
+disable=SC1091
+
+# Source paths (treat files in bin/ and root as a project)
+source-path=SCRIPTDIR
+source-path=SCRIPTDIR/bin

@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: macos-latest   # sips + macOS-only code path; runs where the tool runs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: brew install shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          set -e
+          echo "=== shellcheck bin/*.sh ==="
+          shellcheck -x bin/codex-img-prep bin/codex-clip-watch.sh
+          echo "=== shellcheck install.sh ==="
+          shellcheck -x install.sh
+          echo "✓ all scripts pass shellcheck"
+
+  syntax-check:
+    name: Bash syntax
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n every script
+        run: |
+          set -e
+          for f in bin/*.sh install.sh; do
+              echo "checking $f"
+              bash -n "$f"
+          done
+          echo "✓ all scripts parse cleanly"
+
+  plist-check:
+    name: plutil validate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate LaunchAgent + Quick Action plists
+        run: |
+          set -e
+          plutil -lint launchd/com.user.codex-clipprep.plist
+          plutil -lint "workflow/Compress for Codex.workflow/Contents/Info.plist"
+          plutil -lint "workflow/Compress for Codex.workflow/Contents/document.wflow"
+          echo "✓ all plists valid"
+
+  sql-check:
+    name: SQLite dry-run
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse SQL syntax (no execute)
+        run: |
+          # Strip the actual UPDATE statement (which depends on the user's local DB)
+          # and only parse the SELECT that follows.
+          awk '/^SELECT/{flag=1} flag' cc-switch-fix.sql > /tmp/check.sql
+          # validate syntax via sqlite3 (won't execute UPDATE)
+          sqlite3 :memory: < /tmp/check.sql
+          echo "✓ SQL syntax valid"

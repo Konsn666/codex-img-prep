@@ -17,7 +17,6 @@ set -euo pipefail
 
 MAX_DIM=1920
 JPEG_QUALITY=85
-TARGET_BYTES=4194304   # 4MB - safe margin under MiniMax's 10MB hard limit
 SAFE_BYTES=8388608     # 8MB - hard ceiling; abort if can't get under this
 
 usage() {
@@ -104,7 +103,7 @@ process_clipboard() {
 
     # Put resized image back on clipboard as PNG (Codex accepts PNG/JPEG both)
     if command -v imgclip >/dev/null; then
-        imgclip "$tmp_out" < "$tmp_out" >/dev/null 2>&1 || true
+        imgclip "$tmp_out" >/dev/null 2>&1 || true
     fi
 
     local before after
@@ -115,7 +114,8 @@ process_clipboard() {
         "$(( (before - after) * 100 / (before > 0 ? before : 1) ))"
 
     # Also save a copy to ~/Downloads for Codex if user wants to drag it
-    local saved="$HOME/Downloads/codex-clip-$(date +%Y%m%d-%H%M%S).jpg"
+    local saved
+    saved="$HOME/Downloads/codex-clip-$(date +%Y%m%d-%H%M%S).jpg"
     cp "$tmp_out" "$saved"
     echo "  saved copy: $saved"
 
@@ -128,7 +128,7 @@ watch_dir() {
     echo "watching $dir for new images (Ctrl-C to stop)..."
     fswatch -0 --event Created --event MovedTo --event Renamed \
             --include='\.(png|jpg|jpeg|gif|webp|heic|heif|tiff|bmp)$' \
-            "$dir" 2>/dev/null | while read -d '' path; do
+            "$dir" 2>/dev/null | while read -r -d '' path; do
         sleep 0.3  # wait for file to finish writing
         resize_one "$path" 2>/dev/null || true
     done

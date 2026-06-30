@@ -17,7 +17,8 @@ if ! pngpaste "$tmp" 2>/dev/null; then
     exit 0
 fi
 
-trap "rm -f '$tmp'" EXIT
+# shellcheck disable=SC2064  # we want $tmp expanded at signal time
+trap 'rm -f "$tmp"' EXIT
 
 # Compare against last-seen hash; skip if unchanged
 hash=$(shasum -a 256 "$tmp" | awk '{print $1}')
