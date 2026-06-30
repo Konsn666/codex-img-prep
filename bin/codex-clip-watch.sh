@@ -46,7 +46,7 @@ if "$PREP" "$work/in.png" 2>/dev/null; then
         new_hash=$(shasum -a 256 "$resized_png" | awk '{print $1}')
         echo "$new_hash" > "$STAMP"
         # Log
-        echo "[$(date '+%H:%M:%S')] resized clipboard ${size}B → $(stat -f%z "$resized_png")B" >> /tmp/codex-clip-watch.log
+        echo "[$(date '+%H:%M:%S')] 剪贴板已压缩 / resized clipboard ${size}B → $(stat -f%z "$resized_png")B" >> /tmp/codex-clip-watch.log
     fi
 fi
 rm -rf "$work"

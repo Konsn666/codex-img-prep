@@ -17,7 +17,7 @@ set -euo pipefail
 
 MAX_DIM=1920
 JPEG_QUALITY=85
-SAFE_BYTES=8388608     # 8MB - hard ceiling; abort if can't get under this
+SAFE_BYTES=8388608     # 8MB - 硬上限 / hard ceiling; abort if can't get under this
 
 usage() {
     sed -n '2,16p' "$0"
@@ -46,7 +46,7 @@ resize_one() {
     sips -s format jpeg -s formatOptions "$JPEG_QUALITY" \
          -Z "$MAX_DIM" "$src" --out "$tmp" >/dev/null 2>&1 || {
         rm -f "$tmp"
-        echo "✗ sips failed: $src" >&2; return 1;
+        echo "✗ sips 处理失败 / sips failed: $src" >&2; return 1;
     }
 
     local after
@@ -60,7 +60,7 @@ resize_one() {
 
     if (( after > SAFE_BYTES )); then
         rm -f "$tmp"
-        echo "✗ cannot compress under 8MB: $src (still ${after}B)" >&2
+        echo "✗ 无法压到 8MB 以下 / cannot compress under 8MB: $src (still ${after}B)" >&2
         return 1
     fi
 
@@ -75,7 +75,7 @@ resize_one() {
     fi
     rm -f "$tmp" 2>/dev/null || true
 
-    printf "✓ %s  %s → %s  (-%d%%)\n" \
+    printf "✓ %s  %s → %s  (-%d%%)  已压缩 / compressed\n" \
         "$(basename "$src")" \
         "$(numfmt --to=iec "$before" 2>/dev/null || echo "${before}B")" \
         "$(numfmt --to=iec "$after" 2>/dev/null || echo "${after}B")" \
@@ -89,7 +89,7 @@ process_clipboard() {
 
     if ! pngpaste "$tmp_in" 2>/dev/null; then
         rm -f "$tmp_in" "$tmp_out"
-        echo "✗ no image on clipboard (install pngpaste: brew install pngpaste)" >&2
+        echo "✗ 剪贴板无图片 / no image on clipboard (安装 pngpaste: brew install pngpaste)" >&2
         return 1
     fi
 
@@ -108,7 +108,7 @@ process_clipboard() {
 
     local before after
     before=$(size_of "$tmp_in"); after=$(size_of "$tmp_out")
-    printf "✓ clipboard image  %s → %s  (-%d%%) - paste into Codex now\n" \
+    printf "✓ 剪贴板图片 / clipboard image  %s → %s  (-%d%%)  现在可以粘到 Codex / paste into Codex now\n" \
         "$(numfmt --to=iec "$before" 2>/dev/null || echo "${before}B")" \
         "$(numfmt --to=iec "$after" 2>/dev/null || echo "${after}B")" \
         "$(( (before - after) * 100 / (before > 0 ? before : 1) ))"
@@ -117,7 +117,7 @@ process_clipboard() {
     local saved
     saved="$HOME/Downloads/codex-clip-$(date +%Y%m%d-%H%M%S).jpg"
     cp "$tmp_out" "$saved"
-    echo "  saved copy: $saved"
+    echo "  已保存副本 / saved copy: $saved"
 
     rm -f "$tmp_in" "$tmp_out"
 }
@@ -125,7 +125,7 @@ process_clipboard() {
 # Watch a folder for new files and auto-resize them
 watch_dir() {
     local dir="${1:-$HOME/Desktop}"
-    echo "watching $dir for new images (Ctrl-C to stop)..."
+    echo "监视目录 / watching $dir 新图片 (Ctrl-C 停止 / to stop)..."
     fswatch -0 --event Created --event MovedTo --event Renamed \
             --include='\.(png|jpg|jpeg|gif|webp|heic|heif|tiff|bmp)$' \
             "$dir" 2>/dev/null | while read -r -d '' path; do
