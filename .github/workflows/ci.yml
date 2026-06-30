@@ -54,17 +54,27 @@ jobs:
           plutil -lint "workflow/Compress for Codex.workflow/Contents/document.wflow"
           echo "✓ all plists valid"
 
-  sql-check:
-    name: SQLite dry-run
+  sql-syntax:
+    name: SQLite syntax
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Parse SQL syntax (no execute)
+      - name: Parse SQL syntax (create dummy schema, run SELECT only)
         run: |
-          # Strip the actual UPDATE statement (which depends on the user's local DB)
-          # and only parse the SELECT that follows.
+          # Run only the SELECT (the UPDATE targets the user's local DB).
           awk '/^SELECT/{flag=1} flag' cc-switch-fix.sql > /tmp/check.sql
-          # validate syntax via sqlite3 (won't execute UPDATE)
-          sqlite3 :memory: < /tmp/check.sql
+          # Provide a minimal schema so the SELECT has something to read.
+          sqlite3 :memory: <<EOF
+          CREATE TABLE providers (
+              id TEXT NOT NULL,
+              app_type TEXT NOT NULL,
+              meta TEXT NOT NULL DEFAULT '{}',
+              PRIMARY KEY (id, app_type)
+          );
+          INSERT INTO providers VALUES
+              ('b838cc0d-0d4e-4ad1-a671-7d1be8ba78f4','codex',
+               '{"apiFormat":"openai_chat"}');
+          $(cat /tmp/check.sql)
+          EOF
           echo "✓ SQL syntax valid"
