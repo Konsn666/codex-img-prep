@@ -1,5 +1,7 @@
 # CC Switch upstream issue
 
+**English** | [简体中文](ISSUE.zh-CN.md)
+
 This file contains the verbatim text submitted as a bug report against
 [farion1231/cc-switch](https://github.com/farion1231/cc-switch).
 

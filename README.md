@@ -1,5 +1,7 @@
 # codex-img-prep
 
+**English** | [简体中文](README.zh-CN.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://www.apple.com/macos/)
 [![CI](https://github.com/Konsn666/codex-img-prep/actions/workflows/ci.yml/badge.svg)](https://github.com/Konsn666/codex-img-prep/actions/workflows/ci.yml)
